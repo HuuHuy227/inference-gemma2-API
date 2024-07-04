@@ -17,7 +17,7 @@ class ChatModel(): #PytorchModel, ChatModelMixin):
     def generate(
         self, prompt: str, generate_config: Optional[PytorchGenerateConfig] = None
     ):
-        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.model.device)
         
         if generate_config["do_sample"] == True:
             temperature = generate_config["temperature"]
