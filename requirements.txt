@@ -1,14 +1,14 @@
 transformers==4.42.3
-scipy
-einops
-sentencepiece
-tiktoken
-protobuf
-uvicorn
-pydantic
-fastapi
-sse-starlette
-fire
-packaging
-pyyaml
-numpy<2.0.0
+# scipy
+# einops
+# sentencepiece
+# tiktoken
+# protobuf
+# uvicorn
+# pydantic
+# fastapi
+# sse-starlette
+# fire
+# packaging
+# pyyaml
+# numpy<2.0.0
