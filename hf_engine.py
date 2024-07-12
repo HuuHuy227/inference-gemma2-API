@@ -23,12 +23,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-class HuggingfaceEngine(): #BaseEngine):
+class HuggingfaceEngine(): 
     def __init__(
         self,
         model_path: str,
         enable_tensorizer: bool = False,
-        generate_config: Dict[str, Any] = None #Optional[PytorchGenerateConfig] = None,
+        generate_config: Dict[str, Any] = {} 
     ) -> None: 
         
         self.generating_args = generate_config
