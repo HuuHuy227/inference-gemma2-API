@@ -224,7 +224,7 @@ class HuggingfaceEngine(): #BaseEngine):
         generating_args = generating_args.copy()
         generating_args.update(
             dict(
-                max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_tokens"],
+                # max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_tokens"],
                 do_sample=do_sample if do_sample is not None else generating_args["do_sample"],
                 temperature=temperature if temperature is not None else generating_args["temperature"],
                 top_p=top_p if top_p is not None else generating_args["top_p"],
