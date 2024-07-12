@@ -21,13 +21,13 @@ class ChatModel:
         self.engine = HuggingfaceEngine(
             model_path="Huy227/gemma2_vn",
             # enable_tensorizer=True,
-            # generate_config = {
-            #     "max_new_tokens": 2048,
-            #     "top_p":0.95,
-            #     "top_k":40,
-            #     "temperature":0.1,  
-            #     "do_sample": True
-            # }
+            generate_config = {
+                "max_new_tokens": 2048,
+                "top_p":0.95,
+                "top_k":40,
+                "temperature":0.1,  
+                "do_sample": True
+            }
         )
 
         self._loop = asyncio.new_event_loop()
