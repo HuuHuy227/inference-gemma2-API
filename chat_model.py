@@ -19,9 +19,9 @@ class ChatModel:
     def __init__(self, model_path, generate_config, enable_tensorizer = False) -> None:
         # model_args, data_args, finetuning_args, generating_args = get_infer_args(args)
         self.engine = HuggingfaceEngine(
-            model_path=model_path, # "Huy227/gemma2_vn",
-            enable_tensorizer=enable_tensorizer,
-            generate_config = generate_config
+            model_path=model_path, 
+            generate_config = generate_config,
+            enable_tensorizer=enable_tensorizer
         )
 
         self._loop = asyncio.new_event_loop()
