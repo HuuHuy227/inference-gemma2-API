@@ -209,7 +209,7 @@ class HuggingfaceEngine():
         # inputs = torch.tensor([prompt_ids], device=model.device)
         inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
         prompt_length = inputs.shape[-1] #len(prompt_ids)
-        # attention_mask = torch.ones_like(inputs, dtype=torch.bool)
+        attention_mask = torch.ones_like(inputs, dtype=torch.bool)
 
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
         temperature: Optional[float] = input_kwargs.pop("temperature", None)
@@ -224,7 +224,7 @@ class HuggingfaceEngine():
         generating_args = generating_args.copy()
         generating_args.update(
             dict(
-                # max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_new_tokens"],
+                max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_new_tokens"],
                 do_sample=do_sample if do_sample is not None else generating_args["do_sample"],
                 temperature=temperature if temperature is not None else generating_args["temperature"],
                 top_p=top_p if top_p is not None else generating_args["top_p"],
@@ -260,7 +260,7 @@ class HuggingfaceEngine():
 
         gen_kwargs = dict(
             inputs=inputs,
-            # attention_mask=attention_mask,
+            attention_mask=attention_mask,
             generation_config=GenerationConfig(**generating_args),
         )
 

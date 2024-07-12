@@ -1,6 +1,7 @@
 from typing import  Dict,  List, Optional, Union
 
 from typing_extensions import Literal, NotRequired, TypedDict
+from dataclasses import dataclass
 
 class PytorchGenerateConfig(TypedDict, total=False):
     temperature: float
@@ -19,6 +20,7 @@ class PytorchGenerateConfig(TypedDict, total=False):
     stream_options: Optional[Union[dict, None]]
     request_id: Optional[str]
 
+@dataclass
 class Response:
     response_text: str
     response_length: int
