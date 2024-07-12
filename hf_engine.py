@@ -1,64 +1,46 @@
-# Copyright 2024 the LlamaFactory team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import asyncio
 import concurrent.futures
 import os
 from threading import Thread
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Dict, List, Optional, Sequence, Tuple, Union
+import json
+import logging
 
 import torch
 from transformers import GenerationConfig, TextIteratorStreamer
+from utils import (
+    get_device_preferred_dtype,
+    gpu_count,
+    is_hf_accelerate_supported,
+    select_device
+)
 
-from ..data import get_template_and_fix_tokenizer
-from logging import get_logger
-from ..extras.misc import get_logits_processor
-from ..model import load_model, load_tokenizer
-from .base_engine import BaseEngine, Response
-
+from base_engine import Response #BaseEngine, Response
+# from type import PytorchGenerateConfig
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
-    from transformers import PreTrainedModel, PreTrainedTokenizer, ProcessorMixin
-    from transformers.image_processing_utils import BaseImageProcessor
-    from trl import PreTrainedModelWrapper
+    from transformers import PreTrainedModel, PreTrainedTokenizer
 
-    from ..data import Template
-    from ..hparams import DataArguments, FinetuningArguments, GeneratingArguments, ModelArguments
+logger = logging.getLogger(__name__)
 
-
-logger = get_logger(__name__)
-
-
-class HuggingfaceEngine(BaseEngine):
+class HuggingfaceEngine(): #BaseEngine):
     def __init__(
         self,
-        model_args: "ModelArguments",
-        data_args: "DataArguments",
-        finetuning_args: "FinetuningArguments",
-        generating_args: "GeneratingArguments",
+        # model_args: "ModelArguments",
+        # data_args: "DataArguments",
+        # finetuning_args: "FinetuningArguments",
+        # generating_args: "GeneratingArguments",
+        model_path: str,
+        enable_tensorizer: bool = False,
+        generate_config: Dict[str, Any] = None #Optional[PytorchGenerateConfig] = None,
     ) -> None:
-        self.can_generate = finetuning_args.stage == "sft"
-        tokenizer_module = load_tokenizer(model_args)
-        self.tokenizer = tokenizer_module["tokenizer"]
-        self.processor = tokenizer_module["processor"]
-        self.tokenizer.padding_side = "left" if self.can_generate else "right"
-        self.template = get_template_and_fix_tokenizer(self.tokenizer, data_args.template, data_args.tool_format)
-        self.model = load_model(
-            self.tokenizer, model_args, finetuning_args, is_trainable=False, add_valuehead=(not self.can_generate)
-        )  # must after fixing tokenizer to resize vocab
-        self.generating_args = generating_args.to_dict()
+        # self.tokenizer = tokenizer_module["tokenizer"]
+        # self.template = get_template_and_fix_tokenizer(self.tokenizer, data_args.template, data_args.tool_format)
+        # self.model = load_model(
+        #     self.tokenizer, model_args, finetuning_args, is_trainable=False, add_valuehead=(not self.can_generate)
+        # )  
+        self.generating_args = generate_config
+        self.enable_tensorizer = enable_tensorizer
         
         try:
             asyncio.get_event_loop()
@@ -67,26 +49,169 @@ class HuggingfaceEngine(BaseEngine):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
+        self.model_path = model_path
         self.semaphore = asyncio.Semaphore(int(os.environ.get("MAX_CONCURRENT", "1")))
+        
+        logger.info(f"Loading model {self.model_path}")
+        self._model, self._tokenizer =  self.load() #Loading tokenizer and model
+
+    def load(self):
+        try:
+            import torch
+        except ImportError:
+            raise ImportError(
+                f"Failed to import module 'torch'. Please make sure 'torch' is installed.\n\n"
+            )
+        # quantization = self.quantization
+        num_gpus = gpu_count()
+        device = "auto"
+        self._device = select_device(device)
+
+        kwargs = {}
+
+        dtype = get_device_preferred_dtype(self._device)
+
+        if dtype is not None:
+            kwargs["torch_dtype"] = dtype
+        else:
+            raise ValueError(f"Device {self._device} is not supported in temporary")
+
+        is_device_map_auto = False
+
+        # This is required for Intel GPU to actually work with accelerate device_map until
+        # https://github.com/intel/intel-extension-for-pytorch/issues/522
+        # is resolved
+        max_memory_env = os.getenv("ACCELERATE_MAX_MEMORY", None)
+
+        if max_memory_env is not None:
+            max_memory_raw = json.loads(max_memory_env)
+            max_memory = {
+                int(k) if k.isdigit() else k: max_memory_raw[k] for k in max_memory_raw
+            }
+            kwargs["max_memory"] = max_memory
+
+        if num_gpus > 0 and is_hf_accelerate_supported(self._device):
+            kwargs.update({"device_map": "auto"})
+            is_device_map_auto = True
+
+        if self._check_tensorizer_integrity():
+            model, tokenizer = self._load_tensorizer(**kwargs)
+        else:
+            model, tokenizer = self._load_model(**kwargs)
+
+        if not is_device_map_auto:
+            model.to(self._device)
+
+        self._save_tensorizer(**kwargs)
+
+        logger.debug(f"Model Memory: {model.get_memory_footprint()}")
+
+        return model, tokenizer
+
+    def _check_tensorizer_integrity(self):
+        if not self.enable_tensorizer:
+            return False
+
+        from .tensorizer_utils import check_tensorizer_integrity
+
+        integrity = check_tensorizer_integrity(
+            self.model_path,
+            [component[0] for component in self._get_components()],
+        )
+        logger.info(f"Tensorizer files integrity: {integrity} gemma2")
+        return integrity
+
+    def _load_tensorizer(self, **kwargs):
+        enable_tensorizer = self.enable_tensorizer
+        if enable_tensorizer:
+            from .tensorizer_utils import load_from_tensorizer
+
+            component_metadata = [
+                (name, type, kwargs)
+                for name, _, type, kwargs in self._get_components(**kwargs)
+            ]
+            model, tokenizer = load_from_tensorizer(
+                self.model_path, component_metadata, self._get_model_class(), **kwargs
+            )
+            return model, tokenizer
+
+    def _save_tensorizer(self, **kwargs):
+        enable_tensorizer = self.enable_tensorizer
+        if enable_tensorizer:
+            from .tensorizer_utils import save_to_tensorizer
+
+            components = [(name, obj) for name, obj, _, _ in self._get_components()]
+            save_to_tensorizer(self.model_path, self._model, components, **kwargs)
+
+    def _get_model_class(self):
+        from transformers import AutoModelForCausalLM
+
+        return AutoModelForCausalLM
+    
+    def _get_components(self, **kwargs):
+        from transformers import AutoTokenizer
+
+        return [
+            (
+                "tokenizer",
+                getattr(self, "_tokenizer", None),
+                AutoTokenizer,
+                {
+                    "use_fast": True,
+                    "trust_remote_code": kwargs.get("trust_remote_code", True),
+                    "revision": kwargs.get("revision"),
+                    "code_revision": kwargs.get("code_revision", None),
+                },
+            )
+        ]
+
+    def _load_model(self, **kwargs):
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+        except ImportError:
+            error_message = "Failed to import module 'transformers'"
+            installation_guide = [
+                    "Please make sure 'transformers' is installed. ",
+                    "You can install it by `pip install transformers`\n",
+                ]
+            raise ImportError(f"{error_message}\n\n{''.join(installation_guide)}")
+
+        tokenizer = AutoTokenizer.from_pretrained(
+                self.model_path,
+                use_fast = True
+            )
+        model = AutoModelForCausalLM.from_pretrained(
+                self.model_path,
+                low_cpu_mem_usage=True,
+                **kwargs,
+            )
+
+        return model, tokenizer
+
+    # @staticmethod
+    # def get_prompt(
+    #     chat_history: Optional[List]
+    # ) -> str:   
+    #     ret = ""
+    #     for message in chat_history:
+    #         content = message["content"]
+    #         role = message["role"] 
+    #         ret += "<start_of_turn>" + role + "\n"
+    #         if content:
+    #             ret += content + "<end_of_turn>\n"
+    #     return ret
 
     @staticmethod
-    def get_prompt(
-        prompt: str,
-        chat_history: Optional[List],
-        tools: Optional[List[Dict]] = None,
-    ) -> str:
-        def get_role(role_name: str):
-            if role_name == "user":
-                return prompt_style.roles[0]
-            elif role_name == "assistant":
-                return prompt_style.roles[1]
-            else:
-                return role_name
-            
+    def _get_full_prompt(chat_history) -> str:
+        # chat_history = chat_history or []
+        # chat_history.extend([
+        #     {"role": "user", "content": prompt},
+        #     {"role": "model", "content": ""}
+        # ])
         ret = ""
         for message in chat_history:
             content = message["content"]
-            role = get_role(message["role"])
+            role = message["role"] #get_role(message["role"])
             ret += "<start_of_turn>" + role + "\n"
             if content:
                 ret += content + "<end_of_turn>\n"
@@ -96,40 +221,17 @@ class HuggingfaceEngine(BaseEngine):
     def _process_args(
         model: "PreTrainedModel",
         tokenizer: "PreTrainedTokenizer",
-        processor: Optional["ProcessorMixin"],
-        template: "Template",
         generating_args: Dict[str, Any],
         messages: Sequence[Dict[str, str]],
-        system: Optional[str] = None,
-        tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
         input_kwargs: Optional[Dict[str, Any]] = {},
     ) -> Tuple[Dict[str, Any], int]:
-        if (
-            processor is not None
-            and image is not None
-            and not hasattr(processor, "image_seq_length")
-            and template.image_token not in messages[0]["content"]
-        ):  # llava-like models
-            messages[0]["content"] = template.image_token + messages[0]["content"]
+        
+        prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
 
-        paired_messages = messages + [{"role": "assistant", "content": ""}]
-        system = system or generating_args["default_system"]
-        pixel_values = None
-        prompt_ids, _ = template.encode_oneturn(
-            tokenizer=tokenizer, messages=paired_messages, system=system, tools=tools
-        )
-        if processor is not None and image is not None:  # add image features
-            image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
-            batch_feature = image_processor(image, return_tensors="pt")
-            pixel_values = batch_feature.to(model.device)["pixel_values"]  # shape (B, C, H, W)
-            if hasattr(processor, "image_seq_length"):  # paligemma models
-                image_token_id = tokenizer.convert_tokens_to_ids(template.image_token)
-                prompt_ids = [image_token_id] * getattr(processor, "image_seq_length") + prompt_ids
-
-        prompt_length = len(prompt_ids)
-        inputs = torch.tensor([prompt_ids], device=model.device)
-        attention_mask = torch.ones_like(inputs, dtype=torch.bool)
+        # inputs = torch.tensor([prompt_ids], device=model.device)
+        inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
+        prompt_length = inputs.shape[-1] #len(prompt_ids)
+        # attention_mask = torch.ones_like(inputs, dtype=torch.bool)
 
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
         temperature: Optional[float] = input_kwargs.pop("temperature", None)
@@ -140,10 +242,6 @@ class HuggingfaceEngine(BaseEngine):
         length_penalty: Optional[float] = input_kwargs.pop("length_penalty", None)
         max_length: Optional[int] = input_kwargs.pop("max_length", None)
         max_new_tokens: Optional[int] = input_kwargs.pop("max_new_tokens", None)
-        stop: Optional[Union[str, List[str]]] = input_kwargs.pop("stop", None)
-
-        if stop is not None:
-            logger.warning("Stop parameter is not supported in Huggingface engine yet.")
 
         generating_args = generating_args.copy()
         generating_args.update(
@@ -162,7 +260,7 @@ class HuggingfaceEngine(BaseEngine):
             )
         )
 
-        if isinstance(num_return_sequences, int) and num_return_sequences > 1:  # do_sample needs temperature > 0
+        if isinstance(num_return_sequences, int) and num_return_sequences > 1:  # do_sample needs temperature > 0 else turn off do_sample=False
             generating_args["do_sample"] = True
             generating_args["temperature"] = generating_args["temperature"] or 1.0
 
@@ -183,13 +281,9 @@ class HuggingfaceEngine(BaseEngine):
 
         gen_kwargs = dict(
             inputs=inputs,
-            attention_mask=attention_mask,
+            # attention_mask=attention_mask,
             generation_config=GenerationConfig(**generating_args),
-            logits_processor=get_logits_processor(),
         )
-
-        if pixel_values is not None:
-            gen_kwargs["pixel_values"] = pixel_values
 
         return gen_kwargs, prompt_length
 
@@ -198,18 +292,15 @@ class HuggingfaceEngine(BaseEngine):
     def _chat(
         model: "PreTrainedModel",
         tokenizer: "PreTrainedTokenizer",
-        processor: Optional["ProcessorMixin"],
-        template: "Template",
         generating_args: Dict[str, Any],
         messages: Sequence[Dict[str, str]],
-        system: Optional[str] = None,
-        tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
         input_kwargs: Optional[Dict[str, Any]] = {},
     ) -> List["Response"]:
+        
         gen_kwargs, prompt_length = HuggingfaceEngine._process_args(
-            model, tokenizer, processor, template, generating_args, messages, system, tools, image, input_kwargs
+            model, tokenizer, generating_args, messages, input_kwargs
         )
+
         generate_output = model.generate(**gen_kwargs)
         response_ids = generate_output[:, prompt_length:]
         response = tokenizer.batch_decode(response_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
@@ -228,23 +319,46 @@ class HuggingfaceEngine(BaseEngine):
 
         return results
 
+    async def chat(
+        self,
+        prompt: str,
+        messages: Sequence[Dict[str, str]] = None,
+        **input_kwargs,
+    ) -> List["Response"]:
+
+        messages = messages or []
+        messages.extend([
+            {"role": "user", "content": prompt},
+            {"role": "model", "content": ""}
+        ])
+
+        # model, tokenizer = self._load_model
+
+        loop = asyncio.get_running_loop()
+        input_args = (
+            self._model,
+            self._tokenizer,
+            self.generating_args,
+            messages,
+            input_kwargs,
+        )
+        async with self.semaphore:
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return await loop.run_in_executor(pool, self._chat, *input_args)
+
     @staticmethod
     @torch.inference_mode()
     def _stream_chat(
         model: "PreTrainedModel",
         tokenizer: "PreTrainedTokenizer",
-        processor: Optional["ProcessorMixin"],
-        template: "Template",
         generating_args: Dict[str, Any],
         messages: Sequence[Dict[str, str]],
-        system: Optional[str] = None,
-        tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
         input_kwargs: Optional[Dict[str, Any]] = {},
     ) -> Callable[[], str]:
         gen_kwargs, _ = HuggingfaceEngine._process_args(
-            model, tokenizer, processor, template, generating_args, messages, system, tools, image, input_kwargs
+            model, tokenizer, generating_args, messages, input_kwargs
         )
+
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
         gen_kwargs["streamer"] = streamer
         thread = Thread(target=model.generate, kwargs=gen_kwargs, daemon=True)
@@ -257,90 +371,19 @@ class HuggingfaceEngine(BaseEngine):
                 raise StopAsyncIteration()
 
         return stream
-
-    @staticmethod
-    @torch.inference_mode()
-    def _get_scores(
-        model: "PreTrainedModelWrapper",
-        tokenizer: "PreTrainedTokenizer",
-        batch_input: List[str],
-        input_kwargs: Optional[Dict[str, Any]] = {},
-    ) -> List[float]:
-        max_length = input_kwargs.pop("max_length", None)
-        device = getattr(model.pretrained_model, "device", "cuda")
-        inputs = tokenizer(
-            batch_input,
-            padding=True,
-            truncation=True,
-            max_length=max_length or getattr(model.config, "max_position_embeddings", 1024),
-            return_tensors="pt",
-            add_special_tokens=True,
-        ).to(device)
-
-        input_ids: torch.Tensor = inputs["input_ids"]
-        _, _, values = model(**inputs, output_hidden_states=True, return_dict=True)
-
-        if getattr(model.config, "model_type", None) == "chatglm":
-            values = torch.transpose(values, 0, 1)
-
-        scores = []
-        for i in range(input_ids.size(0)):
-            end_indexes = (input_ids[i] != tokenizer.pad_token_id).nonzero()
-            end_index = end_indexes[-1].item() if len(end_indexes) else 0
-            scores.append(values[i, end_index].nan_to_num().item())
-
-        return scores
-
-    async def chat(
-        self,
-        messages: Sequence[Dict[str, str]],
-        system: Optional[str] = None,
-        tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
-        **input_kwargs,
-    ) -> List["Response"]:
-        if not self.can_generate:
-            raise ValueError("The current model does not support `chat`.")
-
-        loop = asyncio.get_running_loop()
-        input_args = (
-            self.model,
-            self.tokenizer,
-            self.processor,
-            self.template,
-            self.generating_args,
-            messages,
-            system,
-            tools,
-            image,
-            input_kwargs,
-        )
-        async with self.semaphore:
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return await loop.run_in_executor(pool, self._chat, *input_args)
-
+    
     async def stream_chat(
         self,
         messages: Sequence[Dict[str, str]],
-        system: Optional[str] = None,
-        tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
         **input_kwargs,
     ) -> AsyncGenerator[str, None]:
-        if not self.can_generate:
-            raise ValueError("The current model does not support `stream_chat`.")
 
         loop = asyncio.get_running_loop()
         input_args = (
-            self.model,
-            self.tokenizer,
-            self.processor,
-            self.template,
+            self._model,
+            self._tokenizer,
             self.generating_args,
             messages,
-            system,
-            tools,
-            image,
             input_kwargs,
         )
         async with self.semaphore:
@@ -351,17 +394,3 @@ class HuggingfaceEngine(BaseEngine):
                         yield await loop.run_in_executor(pool, stream)
                     except StopAsyncIteration:
                         break
-
-    async def get_scores(
-        self,
-        batch_input: List[str],
-        **input_kwargs,
-    ) -> List[float]:
-        if self.can_generate:
-            raise ValueError("Cannot get scores using an auto-regressive model.")
-
-        loop = asyncio.get_running_loop()
-        input_args = (self.model, self.tokenizer, batch_input, input_kwargs)
-        async with self.semaphore:
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return await loop.run_in_executor(pool, self._get_scores, *input_args)
