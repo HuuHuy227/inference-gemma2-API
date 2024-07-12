@@ -16,18 +16,12 @@ def _start_background_loop(loop: "asyncio.AbstractEventLoop") -> None:
 
 
 class ChatModel:
-    def __init__(self) -> None:
+    def __init__(self, model_path, generate_config, enable_tensorizer = False) -> None:
         # model_args, data_args, finetuning_args, generating_args = get_infer_args(args)
         self.engine = HuggingfaceEngine(
-            model_path="Huy227/gemma2_vn",
-            # enable_tensorizer=True,
-            generate_config = {
-                "max_new_tokens": 2048,
-                "top_p":0.95,
-                "top_k":40,
-                "temperature":0.1,  
-                "do_sample": True
-            }
+            model_path=model_path, # "Huy227/gemma2_vn",
+            enable_tensorizer=enable_tensorizer,
+            generate_config = generate_config
         )
 
         self._loop = asyncio.new_event_loop()
