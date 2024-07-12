@@ -8,7 +8,7 @@ uvicorn
 pydantic
 fastapi
 sse-starlette
-fire
+# fire
 packaging
 pyyaml
 numpy<2.0.0

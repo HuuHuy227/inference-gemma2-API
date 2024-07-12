@@ -15,7 +15,7 @@ from utils import (
     select_device
 )
 
-from base_engine import Response #BaseEngine, Response
+from type import Response #BaseEngine, Response
 # from type import PytorchGenerateConfig
 
 if TYPE_CHECKING:
@@ -26,22 +26,13 @@ logger = logging.getLogger(__name__)
 class HuggingfaceEngine(): #BaseEngine):
     def __init__(
         self,
-        # model_args: "ModelArguments",
-        # data_args: "DataArguments",
-        # finetuning_args: "FinetuningArguments",
-        # generating_args: "GeneratingArguments",
         model_path: str,
         enable_tensorizer: bool = False,
         generate_config: Dict[str, Any] = None #Optional[PytorchGenerateConfig] = None,
-    ) -> None:
-        # self.tokenizer = tokenizer_module["tokenizer"]
-        # self.template = get_template_and_fix_tokenizer(self.tokenizer, data_args.template, data_args.tool_format)
-        # self.model = load_model(
-        #     self.tokenizer, model_args, finetuning_args, is_trainable=False, add_valuehead=(not self.can_generate)
-        # )  
+    ) -> None: 
+        
         self.generating_args = generate_config
         self.enable_tensorizer = enable_tensorizer
-        
         try:
             asyncio.get_event_loop()
         except RuntimeError:
@@ -187,19 +178,6 @@ class HuggingfaceEngine(): #BaseEngine):
             )
 
         return model, tokenizer
-
-    # @staticmethod
-    # def get_prompt(
-    #     chat_history: Optional[List]
-    # ) -> str:   
-    #     ret = ""
-    #     for message in chat_history:
-    #         content = message["content"]
-    #         role = message["role"] 
-    #         ret += "<start_of_turn>" + role + "\n"
-    #         if content:
-    #             ret += content + "<end_of_turn>\n"
-    #     return ret
 
     @staticmethod
     def _get_full_prompt(chat_history) -> str:
