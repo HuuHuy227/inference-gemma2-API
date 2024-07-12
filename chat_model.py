@@ -2,8 +2,8 @@ import asyncio
 from threading import Thread
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Generator, List, Optional, Sequence
 
-from .utils import torch_gc
-from .hf_engine import HuggingfaceEngine
+from utils import torch_gc
+from hf_engine import HuggingfaceEngine
 
 
 if TYPE_CHECKING:
