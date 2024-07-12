@@ -103,7 +103,7 @@ class HuggingfaceEngine():
         if not self.enable_tensorizer:
             return False
 
-        from .tensorizer_utils import check_tensorizer_integrity
+        from tensorizer_utils import check_tensorizer_integrity
 
         integrity = check_tensorizer_integrity(
             self.model_path,
@@ -115,7 +115,7 @@ class HuggingfaceEngine():
     def _load_tensorizer(self, **kwargs):
         enable_tensorizer = self.enable_tensorizer
         if enable_tensorizer:
-            from .tensorizer_utils import load_from_tensorizer
+            from tensorizer_utils import load_from_tensorizer
 
             component_metadata = [
                 (name, type, kwargs)
@@ -129,7 +129,7 @@ class HuggingfaceEngine():
     def _save_tensorizer(self, **kwargs):
         enable_tensorizer = self.enable_tensorizer
         if enable_tensorizer:
-            from .tensorizer_utils import save_to_tensorizer
+            from tensorizer_utils import save_to_tensorizer
 
             components = [(name, obj) for name, obj, _, _ in self._get_components()]
             save_to_tensorizer(self.model_path, self._model, components, **kwargs)
