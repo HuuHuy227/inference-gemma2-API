@@ -224,7 +224,7 @@ class HuggingfaceEngine(): #BaseEngine):
         generating_args = generating_args.copy()
         generating_args.update(
             dict(
-                # max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_tokens"],
+                max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_new_tokens"],
                 do_sample=do_sample if do_sample is not None else generating_args["do_sample"],
                 temperature=temperature if temperature is not None else generating_args["temperature"],
                 top_p=top_p if top_p is not None else generating_args["top_p"],
@@ -238,7 +238,7 @@ class HuggingfaceEngine(): #BaseEngine):
                 pad_token_id=tokenizer.pad_token_id,
             )
         )
-
+        print(max_new_tokens,top_k, top_p, temperature, do_sample)
         if isinstance(num_return_sequences, int) and num_return_sequences > 1:  # do_sample needs temperature > 0 else turn off do_sample=False
             generating_args["do_sample"] = True
             generating_args["temperature"] = generating_args["temperature"] or 1.0

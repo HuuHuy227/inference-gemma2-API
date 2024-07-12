@@ -16,18 +16,18 @@ def _start_background_loop(loop: "asyncio.AbstractEventLoop") -> None:
 
 
 class ChatModel:
-    def __init__(self, args: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self) -> None:
         # model_args, data_args, finetuning_args, generating_args = get_infer_args(args)
         self.engine = HuggingfaceEngine(
             model_path="Huy227/gemma2_vn",
             # enable_tensorizer=True,
-            generate_config = {
-                "max_tokens": 2048,
-                "top_p":0.95,
-                "top_k":40,
-                "temperature":0.1,  
-                "do_sample": True
-            }
+            # generate_config = {
+            #     "max_new_tokens": 2048,
+            #     "top_p":0.95,
+            #     "top_k":40,
+            #     "temperature":0.1,  
+            #     "do_sample": True
+            # }
         )
 
         self._loop = asyncio.new_event_loop()
@@ -36,18 +36,20 @@ class ChatModel:
 
     def chat(
         self,
+        prompt,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> List["Response"]:
-        task = asyncio.run_coroutine_threadsafe(self.achat(messages, **input_kwargs), self._loop)
+        task = asyncio.run_coroutine_threadsafe(self.achat(prompt, messages, **input_kwargs), self._loop)
         return task.result()
 
     async def achat(
         self,
+        prompt,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> List["Response"]:
-        return await self.engine.chat(messages, **input_kwargs)
+        return await self.engine.chat(prompt, messages, **input_kwargs)
 
     def stream_chat(
         self,
