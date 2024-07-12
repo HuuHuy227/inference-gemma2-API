@@ -219,7 +219,7 @@ class HuggingfaceEngine(): #BaseEngine):
         # repetition_penalty: Optional[float] = input_kwargs.pop("repetition_penalty", None)
         # length_penalty: Optional[float] = input_kwargs.pop("length_penalty", None)
         max_length: Optional[int] = input_kwargs.pop("max_length", None)
-        max_new_tokens: Optional[int] = input_kwargs.pop("max_new_tokens", 1024)
+        max_new_tokens: Optional[int] = input_kwargs.pop("max_new_tokens", None)
 
         generating_args = generating_args.copy()
         generating_args.update(
