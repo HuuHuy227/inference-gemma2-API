@@ -93,7 +93,7 @@ class HuggingfaceEngine():
         if not is_device_map_auto:
             model.to(self._device)
 
-        self._save_tensorizer(**kwargs)
+        self._save_tensorizer(model, **kwargs)
 
         logger.debug(f"Model Memory: {model.get_memory_footprint()}")
 
@@ -126,13 +126,13 @@ class HuggingfaceEngine():
             )
             return model, tokenizer
 
-    def _save_tensorizer(self, **kwargs):
+    def _save_tensorizer(self, model, **kwargs):
         enable_tensorizer = self.enable_tensorizer
         if enable_tensorizer:
             from tensorizer_utils import save_to_tensorizer
 
             components = [(name, obj) for name, obj, _, _ in self._get_components()]
-            save_to_tensorizer(self.model_path, self._model, components, **kwargs)
+            save_to_tensorizer(self.model_path, model, components, **kwargs)
 
     def _get_model_class(self):
         from transformers import AutoModelForCausalLM
