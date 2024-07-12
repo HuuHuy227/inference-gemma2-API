@@ -22,7 +22,7 @@ class ChatModel:
             model_path="Huy227/gemma2_vn",
             # enable_tensorizer=True,
             generate_config = {
-                "max_tokens": 2048,
+                "max_tokens": 512,
                 "top_p":0.95,
                 "top_k":40,
                 "temperature":0.1,  
