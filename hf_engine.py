@@ -180,12 +180,26 @@ class HuggingfaceEngine():
         return model, tokenizer
 
     @staticmethod
-    def _get_full_prompt(chat_history) -> str:
+    def _get_prompt(chat_history) -> str:
         # chat_history = chat_history or []
         # chat_history.extend([
         #     {"role": "user", "content": prompt},
         #     {"role": "model", "content": ""}
         # ])
+        ret = ""
+        for message in chat_history:
+            content = message["content"]
+            role = message["role"] #get_role(message["role"])
+            ret += "<start_of_turn>" + role + "\n"
+            if content:
+                ret += content + "<end_of_turn>\n"
+        return ret
+    
+    @staticmethod
+    def _get_full_prompt(chat_history) -> str:
+        if chat_history[-1]["role"] == "user":
+            chat_history.append({"role": "model", "content": ""})
+        
         ret = ""
         for message in chat_history:
             content = message["content"]
@@ -306,12 +320,12 @@ class HuggingfaceEngine():
     ) -> List["Response"]:
 
         messages = messages or []
-        messages.extend([
-            {"role": "user", "content": prompt},
-            {"role": "model", "content": ""}
-        ])
+        messages.append({"role": "user", "content": prompt})
 
-        # model, tokenizer = self._load_model
+        # messages.extend([
+        #     {"role": "user", "content": prompt},
+        #     {"role": "model", "content": ""}
+        # ])
 
         loop = asyncio.get_running_loop()
         input_args = (
@@ -353,9 +367,13 @@ class HuggingfaceEngine():
     
     async def stream_chat(
         self,
+        prompt: str,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> AsyncGenerator[str, None]:
+
+        messages = messages or []
+        messages.append({"role": "user", "content": prompt})
 
         loop = asyncio.get_running_loop()
         input_args = (

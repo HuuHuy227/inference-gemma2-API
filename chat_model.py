@@ -97,7 +97,14 @@ def run_chat() -> None:
             print("History has been removed.")
             continue
 
-        messages.append({"role": "user", "content": query})
+        # messages.append({"role": "user", "content": query})
+
+        messages = messages or []
+        messages.extend([
+            {"role": "user", "content": query},
+            {"role": "model", "content": ""}
+        ])
+
         print("Assistant: ", end="", flush=True)
 
         response = ""
