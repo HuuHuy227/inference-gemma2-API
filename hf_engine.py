@@ -235,22 +235,23 @@ class HuggingfaceEngine():
         max_new_tokens: Optional[int] = input_kwargs.pop("max_new_tokens", None)
 
         generating_args = generating_args.copy()
-        generating_args.update(
-            dict(
-                max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_new_tokens"],
-                do_sample=do_sample if do_sample is not None else generating_args["do_sample"],
-                temperature=temperature if temperature is not None else generating_args["temperature"],
-                top_p=top_p if top_p is not None else generating_args["top_p"],
-                top_k=top_k if top_k is not None else generating_args["top_k"],
-                num_return_sequences=num_return_sequences,
-                # repetition_penalty=repetition_penalty
-                # if repetition_penalty is not None
-                # else generating_args["repetition_penalty"],
-                # length_penalty=length_penalty if length_penalty is not None else generating_args["length_penalty"],
-                eos_token_id=[tokenizer.eos_token_id] + tokenizer.additional_special_tokens_ids,
-                pad_token_id=tokenizer.pad_token_id,
+        if len(generating_args) > 0:
+            generating_args.update(
+                dict(
+                    max_new_tokens = max_new_tokens if max_new_tokens is not None else generating_args["max_new_tokens"],
+                    do_sample=do_sample if do_sample is not None else generating_args["do_sample"],
+                    temperature=temperature if temperature is not None else generating_args["temperature"],
+                    top_p=top_p if top_p is not None else generating_args["top_p"],
+                    top_k=top_k if top_k is not None else generating_args["top_k"],
+                    num_return_sequences=num_return_sequences,
+                    # repetition_penalty=repetition_penalty
+                    # if repetition_penalty is not None
+                    # else generating_args["repetition_penalty"],
+                    # length_penalty=length_penalty if length_penalty is not None else generating_args["length_penalty"],
+                    eos_token_id=[tokenizer.eos_token_id] + tokenizer.additional_special_tokens_ids,
+                    pad_token_id=tokenizer.pad_token_id,
+                )
             )
-        )
 
         if isinstance(num_return_sequences, int) and num_return_sequences > 1:  # do_sample needs temperature > 0 else turn off do_sample=False
             generating_args["do_sample"] = True
@@ -319,7 +320,7 @@ class HuggingfaceEngine():
 
         # messages = messages or []
         # messages.append({"role": "user", "content": prompt})
-        
+
         loop = asyncio.get_running_loop()
         input_args = (
             self._model,
