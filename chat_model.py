@@ -30,20 +30,18 @@ class ChatModel:
 
     def chat(
         self,
-        prompt,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> List["Response"]:
-        task = asyncio.run_coroutine_threadsafe(self.achat(prompt, messages, **input_kwargs), self._loop)
+        task = asyncio.run_coroutine_threadsafe(self.achat(messages, **input_kwargs), self._loop)
         return task.result()
 
     async def achat(
         self,
-        prompt,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> List["Response"]:
-        return await self.engine.chat(prompt, messages, **input_kwargs)
+        return await self.engine.chat(messages, **input_kwargs)
 
     def stream_chat(
         self,

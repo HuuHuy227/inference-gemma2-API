@@ -5,7 +5,7 @@ import os
 import uuid
 from typing import TYPE_CHECKING, AsyncGenerator, Dict, List, Optional, Tuple
 import logging
-from type import Role as DataRole
+# from type import Role as DataRole
 # from ..extras.logging import get_logger
 # from ..extras.packages import is_fastapi_available, is_pillow_available, is_requests_available
 from utils import dictify, jsonify
@@ -20,28 +20,26 @@ from type import (
     Function,
     FunctionCall,
     Role,
-    ScoreEvaluationResponse,
+    # ScoreEvaluationResponse,
 )
 
 from fastapi import HTTPException, status
 import requests
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
-
     from chat_model import ChatModel
-    from type import ChatCompletionRequest, ScoreEvaluationRequest
+    from type import ChatCompletionRequest#, ScoreEvaluationRequest
 
 
 logger = logging.getLogger(__name__)
 
-ROLE_MAPPING = {
-    Role.USER: DataRole.USER.value,
-    Role.ASSISTANT: DataRole.ASSISTANT.value,
-    Role.SYSTEM: DataRole.SYSTEM.value,
-    Role.FUNCTION: DataRole.FUNCTION.value,
-    # Role.TOOL: DataRole.OBSERVATION.value,
-}
+# ROLE_MAPPING = {
+#     Role.USER: DataRole.USER.value,
+#     Role.ASSISTANT: DataRole.ASSISTANT.value,
+#     Role.SYSTEM: DataRole.SYSTEM.value,
+#     Role.FUNCTION: DataRole.FUNCTION.value,
+#     # Role.TOOL: DataRole.OBSERVATION.value,
+# }
 
 
 def _process_request(
@@ -74,11 +72,11 @@ def _process_request(
                 for tool_call in message.tool_calls
             ]
             content = json.dumps(tool_calls, ensure_ascii=False)
-            input_messages.append({"role": ROLE_MAPPING[Role.FUNCTION], "content": content})
+            input_messages.append({"role": Role.FUNCTION, "content": content})
         elif isinstance(message.content, list):
             for input_item in message.content:
                 if input_item.type == "text":
-                    input_messages.append({"role": ROLE_MAPPING[message.role], "content": input_item.text})
+                    input_messages.append({"role": message.role, "content": input_item.text})
                 # else:
                 #     image_url = input_item.image_url.url
                 #     if image_url.startswith("data:image"):  # base64 image
@@ -91,7 +89,7 @@ def _process_request(
 
                 #     image = Image.open(image_path).convert("RGB")
         else:
-            input_messages.append({"role": ROLE_MAPPING[message.role], "content": message.content})
+            input_messages.append({"role": message.role, "content": message.content})
 
     tool_list = request.tools
     if isinstance(tool_list, list) and len(tool_list):
@@ -120,12 +118,11 @@ async def create_chat_completion_response(
     request: "ChatCompletionRequest", chat_model: "ChatModel"
 ) -> "ChatCompletionResponse":
     completion_id = "chatcmpl-{}".format(uuid.uuid4().hex)
-    input_messages, system, tools, image = _process_request(request)
+    input_messages, system, tools = _process_request(request)
     responses = await chat_model.achat(
         input_messages,
         system,
         tools,
-        image,
         do_sample=request.do_sample,
         temperature=request.temperature,
         top_p=request.top_p,
@@ -171,7 +168,7 @@ async def create_stream_chat_completion_response(
     request: "ChatCompletionRequest", chat_model: "ChatModel"
 ) -> AsyncGenerator[str, None]:
     completion_id = "chatcmpl-{}".format(uuid.uuid4().hex)
-    input_messages, system, tools, image = _process_request(request)
+    input_messages, _, tools = _process_request(request)
     if tools:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot stream function calls.")
 
@@ -183,9 +180,6 @@ async def create_stream_chat_completion_response(
     )
     async for new_token in chat_model.astream_chat(
         input_messages,
-        system,
-        tools,
-        image,
         do_sample=request.do_sample,
         temperature=request.temperature,
         top_p=request.top_p,
@@ -203,11 +197,11 @@ async def create_stream_chat_completion_response(
     yield "[DONE]"
 
 
-async def create_score_evaluation_response(
-    request: "ScoreEvaluationRequest", chat_model: "ChatModel"
-) -> "ScoreEvaluationResponse":
-    if len(request.messages) == 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request")
+# async def create_score_evaluation_response(
+#     request: "ScoreEvaluationRequest", chat_model: "ChatModel"
+# ) -> "ScoreEvaluationResponse":
+#     if len(request.messages) == 0:
+#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request")
 
-    scores = await chat_model.aget_scores(request.messages, max_length=request.max_length)
-    return ScoreEvaluationResponse(model=request.model, scores=scores)
+#     scores = await chat_model.aget_scores(request.messages, max_length=request.max_length)
+#     return ScoreEvaluationResponse(model=request.model, scores=scores)

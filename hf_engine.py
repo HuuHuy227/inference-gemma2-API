@@ -313,19 +313,13 @@ class HuggingfaceEngine():
 
     async def chat(
         self,
-        prompt: str,
         messages: Sequence[Dict[str, str]] = None,
         **input_kwargs,
     ) -> List["Response"]:
 
-        messages = messages or []
-        messages.append({"role": "user", "content": prompt})
-
-        # messages.extend([
-        #     {"role": "user", "content": prompt},
-        #     {"role": "model", "content": ""}
-        # ])
-
+        # messages = messages or []
+        # messages.append({"role": "user", "content": prompt})
+        
         loop = asyncio.get_running_loop()
         input_args = (
             self._model,

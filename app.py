@@ -9,7 +9,7 @@ from utils import torch_gc
 
 from chat import (
     create_chat_completion_response,
-    create_score_evaluation_response,
+    # create_score_evaluation_response,
     create_stream_chat_completion_response,
 )
 from type import (
