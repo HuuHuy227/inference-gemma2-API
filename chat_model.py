@@ -47,11 +47,10 @@ class ChatModel:
 
     def stream_chat(
         self,
-        prompt: str,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> Generator[str, None, None]:
-        generator = self.astream_chat(prompt, messages, **input_kwargs)
+        generator = self.astream_chat(messages, **input_kwargs)
         while True:
             try:
                 task = asyncio.run_coroutine_threadsafe(generator.__anext__(), self._loop)
@@ -61,11 +60,10 @@ class ChatModel:
 
     async def astream_chat(
         self,
-        prompt,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> AsyncGenerator[str, None]:
-        async for new_token in self.engine.stream_chat(prompt, messages, **input_kwargs):
+        async for new_token in self.engine.stream_chat(messages, **input_kwargs):
             yield new_token
 
 def run_chat() -> None:

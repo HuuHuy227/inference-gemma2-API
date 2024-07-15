@@ -12,9 +12,9 @@ from typing_extensions import Literal
 class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
-    # SYSTEM = "system"
-    # FUNCTION = "function"
-    # TOOL = "tool"
+    SYSTEM = "system"
+    FUNCTION = "function"
+    TOOL = "tool"
 
 
 @unique
@@ -75,6 +75,7 @@ class ChatCompletionMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     model: str
+    prompt: str
     messages: List[ChatMessage]
     tools: Optional[List[FunctionAvailable]] = None
     do_sample: Optional[bool] = None

@@ -15,8 +15,7 @@ from utils import (
     select_device
 )
 
-from type import Response #BaseEngine, Response
-# from type import PytorchGenerateConfig
+from type import Response 
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizer
@@ -203,7 +202,7 @@ class HuggingfaceEngine():
         ret = ""
         for message in chat_history:
             content = message["content"]
-            role = message["role"] #get_role(message["role"])
+            role = message["role"] 
             ret += "<start_of_turn>" + role + "\n"
             if content:
                 ret += content + "<end_of_turn>\n"
@@ -367,13 +366,12 @@ class HuggingfaceEngine():
     
     async def stream_chat(
         self,
-        prompt: str,
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> AsyncGenerator[str, None]:
 
-        messages = messages or []
-        messages.append({"role": "user", "content": prompt})
+        # messages = messages or []
+        # messages.append({"role": "user", "content": prompt})
 
         loop = asyncio.get_running_loop()
         input_args = (
