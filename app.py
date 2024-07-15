@@ -91,9 +91,16 @@ def create_app(chat_model: "ChatModel") -> "FastAPI":
 
     # return app
 
-
 def run_api() -> None:
-    chat_model = ChatModel()
+    model_path = "Huy227/gemma2_vn"
+    generate_config = {
+                "max_new_tokens": 1024,
+                "top_p":0.95,
+                "top_k":40,
+                "temperature":0.1,  
+                "do_sample": True
+            }
+    chat_model = ChatModel(model_path, generate_config)
     app = create_app(chat_model)
     api_host = os.environ.get("API_HOST", "0.0.0.0")
     api_port = int(os.environ.get("API_PORT", "8000"))
