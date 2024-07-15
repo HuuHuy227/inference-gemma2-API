@@ -118,11 +118,9 @@ async def create_chat_completion_response(
     request: "ChatCompletionRequest", chat_model: "ChatModel"
 ) -> "ChatCompletionResponse":
     completion_id = "chatcmpl-{}".format(uuid.uuid4().hex)
-    input_messages, system, tools = _process_request(request)
+    input_messages, _, _ = _process_request(request)
     responses = await chat_model.achat(
         input_messages,
-        system,
-        tools,
         do_sample=request.do_sample,
         temperature=request.temperature,
         top_p=request.top_p,
@@ -134,10 +132,10 @@ async def create_chat_completion_response(
     prompt_length, response_length = 0, 0
     choices = []
     for i, response in enumerate(responses):
-        if tools:
-            result = chat_model.engine.template.extract_tool(response.response_text)
-        else:
-            result = response.response_text
+        # if tools:
+        #     result = chat_model.engine.template.extract_tool(response.response_text)
+        # else:
+        result = response.response_text
 
         if isinstance(result, list):
             tool_calls = []

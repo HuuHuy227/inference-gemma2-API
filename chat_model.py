@@ -16,7 +16,7 @@ def _start_background_loop(loop: "asyncio.AbstractEventLoop") -> None:
 
 
 class ChatModel:
-    def __init__(self, model_path, generate_config, enable_tensorizer = False) -> None:
+    def __init__(self, model_path, generate_config = {}, enable_tensorizer = False) -> None:
         # model_args, data_args, finetuning_args, generating_args = get_infer_args(args)
         self.engine = HuggingfaceEngine(
             model_path=model_path, 
