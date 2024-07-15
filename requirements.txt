@@ -9,7 +9,7 @@ pydantic
 fastapi
 sse-starlette
 # fire
-packaging
-pyyaml
+# packaging
+# pyyaml
 numpy<2.0.0
 tensorizer

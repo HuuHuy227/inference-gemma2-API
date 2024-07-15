@@ -1,13 +1,11 @@
-import base64
-import io
+# import base64
+# import io
+# import os
 import json
-import os
 import uuid
 from typing import TYPE_CHECKING, AsyncGenerator, Dict, List, Optional, Tuple
 import logging
-# from type import Role as DataRole
-# from ..extras.logging import get_logger
-# from ..extras.packages import is_fastapi_available, is_pillow_available, is_requests_available
+
 from utils import dictify, jsonify
 from type import (
     ChatCompletionMessage,
@@ -24,7 +22,7 @@ from type import (
 )
 
 from fastapi import HTTPException, status
-import requests
+# import requests
 
 if TYPE_CHECKING:
     from chat_model import ChatModel
