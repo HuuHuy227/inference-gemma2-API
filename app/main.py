@@ -71,6 +71,8 @@ def create_app(chat_model: "ChatModel") -> "FastAPI":
             return EventSourceResponse(generate, media_type="text/event-stream")
         else:
             return await create_chat_completion_response(request, chat_model)
+        
+    return app
 
 def run_api() -> None:
     model_path = "Huy227/gemma2_vn"
