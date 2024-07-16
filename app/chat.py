@@ -1,6 +1,3 @@
-# import base64
-# import io
-# import os
 import json
 import uuid
 from typing import TYPE_CHECKING, AsyncGenerator, Dict, List, Optional, Tuple
@@ -17,12 +14,9 @@ from type import (
     Finish,
     Function,
     FunctionCall,
-    Role,
-    # ScoreEvaluationResponse,
+    Role
 )
-
 from fastapi import HTTPException, status
-# import requests
 
 if TYPE_CHECKING:
     from chat_model import ChatModel
@@ -30,15 +24,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-# ROLE_MAPPING = {
-#     Role.USER: DataRole.USER.value,
-#     Role.ASSISTANT: DataRole.ASSISTANT.value,
-#     Role.SYSTEM: DataRole.SYSTEM.value,
-#     Role.FUNCTION: DataRole.FUNCTION.value,
-#     # Role.TOOL: DataRole.OBSERVATION.value,
-# }
-
 
 def _process_request(
     request: "ChatCompletionRequest",
@@ -191,13 +176,3 @@ async def create_stream_chat_completion_response(
         completion_id=completion_id, model=request.model, delta=ChatCompletionMessage(), finish_reason=Finish.STOP
     )
     yield "[DONE]"
-
-
-# async def create_score_evaluation_response(
-#     request: "ScoreEvaluationRequest", chat_model: "ChatModel"
-# ) -> "ScoreEvaluationResponse":
-#     if len(request.messages) == 0:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request")
-
-#     scores = await chat_model.aget_scores(request.messages, max_length=request.max_length)
-#     return ScoreEvaluationResponse(model=request.model, scores=scores)

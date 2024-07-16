@@ -2,7 +2,7 @@ import asyncio
 import concurrent.futures
 import os
 from threading import Thread
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Dict, List, Optional, Sequence, Tuple
 import json
 import logging
 

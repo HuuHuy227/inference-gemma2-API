@@ -1,0 +1,17 @@
+version: '2.3'
+services:
+  detectionservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: docker-registry.vnpttiengiang.vn/chatbot/gemma2-inference:latest
+    command: 
+      - python3
+      - main.py
+    # environment:
+    #   LC_ALL: C.UTF-8
+    #   LANG: C.UTF-8
+    #   NVIDIA_VISIBLE_DEVICES: all
+    runtime: nvidia
+    ports:
+    - "8000:8000"

@@ -1,8 +1,5 @@
 import os
 from contextlib import asynccontextmanager
-from typing import Optional
-
-from typing_extensions import Annotated
 
 from chat_model import ChatModel
 from utils import torch_gc
@@ -18,19 +15,17 @@ from type import (
     ModelList
 )
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import FastAPI, status#, Depends, HTTPException 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
+# from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 
 from sse_starlette import EventSourceResponse
 import uvicorn
-
 
 @asynccontextmanager
 async def lifespan(app: "FastAPI"):  # collects GPU memory
     yield
     torch_gc()
-
 
 def create_app(chat_model: "ChatModel") -> "FastAPI":
     app = FastAPI(lifespan=lifespan)
@@ -71,28 +66,11 @@ def create_app(chat_model: "ChatModel") -> "FastAPI":
         # dependencies=[Depends(verify_api_key)],
     )
     async def create_chat_completion(request: ChatCompletionRequest):
-        # if not chat_model.engine.can_generate:
-        #     raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, detail="Not allowed")
-
         if request.stream:
             generate = create_stream_chat_completion_response(request, chat_model)
             return EventSourceResponse(generate, media_type="text/event-stream")
         else:
             return await create_chat_completion_response(request, chat_model)
-
-    # @app.post(
-    #     "/v1/score/evaluation",
-    #     response_model=ScoreEvaluationResponse,
-    #     status_code=status.HTTP_200_OK,
-    #     dependencies=[Depends(verify_api_key)],
-    # )
-    # async def create_score_evaluation(request: ScoreEvaluationRequest):
-    #     if chat_model.engine.can_generate:
-    #         raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, detail="Not allowed")
-
-    #     return await create_score_evaluation_response(request, chat_model)
-
-    # return app
 
 def run_api() -> None:
     model_path = "Huy227/gemma2_vn"
@@ -109,7 +87,6 @@ def run_api() -> None:
     api_port = int(os.environ.get("API_PORT", "8000"))
     print("Visit http://localhost:{}/docs for API document.".format(api_port))
     uvicorn.run(app, host=api_host, port=api_port)
-
 
 if __name__ == "__main__":
     run_api()
