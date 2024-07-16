@@ -1,6 +1,6 @@
 transformers==4.42.3
+accelerate
 scipy
-einops
 sentencepiece
 tiktoken
 protobuf
@@ -8,8 +8,5 @@ uvicorn
 pydantic
 fastapi
 sse-starlette
-# fire
-# packaging
-# pyyaml
 numpy<2.0.0
 tensorizer

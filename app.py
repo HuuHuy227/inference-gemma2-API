@@ -9,7 +9,6 @@ from utils import torch_gc
 
 from chat import (
     create_chat_completion_response,
-    # create_score_evaluation_response,
     create_stream_chat_completion_response,
 )
 from type import (
@@ -51,6 +50,10 @@ def create_app(chat_model: "ChatModel") -> "FastAPI":
     #     if api_key and (auth is None or auth.credentials != api_key):
     #         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
 
+    @app.get("/")
+    def read_root():
+        return {"Hello": "This is gemma2 inference API"}
+
     @app.get(
         "/models",
         response_model=ModelList,
@@ -58,7 +61,7 @@ def create_app(chat_model: "ChatModel") -> "FastAPI":
         # dependencies=[Depends(verify_api_key)],
     )
     async def list_models():
-        model_card = ModelCard(id="gpt-3.5-turbo")
+        model_card = ModelCard(id="gemma2-vn", owned_by= "vnpttgg")
         return ModelList(data=[model_card])
 
     @app.post(
@@ -97,7 +100,7 @@ def run_api() -> None:
                 "max_new_tokens": 1024,
                 "top_p":0.95,
                 "top_k":40,
-                "temperature":0.1,  
+                "temperature":0.3,  
                 "do_sample": True
             }
     chat_model = ChatModel(model_path, generate_config)
