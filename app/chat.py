@@ -18,6 +18,8 @@ from type import (
 )
 from fastapi import HTTPException, status
 
+from utils import torch_gc
+
 if TYPE_CHECKING:
     from chat_model import ChatModel
     from type import ChatCompletionRequest#, ScoreEvaluationRequest
@@ -141,6 +143,8 @@ async def create_chat_completion_response(
         completion_tokens=response_length,
         total_tokens=prompt_length + response_length,
     )
+    # Clear memory
+    torch_gc()
 
     return ChatCompletionResponse(id=completion_id, model=request.model, choices=choices, usage=usage)
 
@@ -176,3 +180,5 @@ async def create_stream_chat_completion_response(
         completion_id=completion_id, model=request.model, delta=ChatCompletionMessage(), finish_reason=Finish.STOP
     )
     yield "[DONE]"
+    # Clear memory
+    torch_gc()
