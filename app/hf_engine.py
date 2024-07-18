@@ -168,11 +168,11 @@ class HuggingfaceEngine():
 
         tokenizer = AutoTokenizer.from_pretrained(
                 self.model_path,
-                use_fast = True
+                # use_fast = True
             )
         model = AutoModelForCausalLM.from_pretrained(
                 self.model_path,
-                low_cpu_mem_usage=True,
+                # low_cpu_mem_usage=True,
                 **kwargs,
             )
 
