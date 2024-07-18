@@ -221,12 +221,17 @@ class HuggingfaceEngine():
         # inputs = torch.tensor([prompt_ids], device=model.device)
         # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
 
+        inputs = tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt=True,
+            return_tensors="pt"
+        ).to(model.device)
+
         prompt_length = len(prompt_ids)
-        inputs = torch.tensor([prompt_ids], device=model.device)
+        # inputs = torch.tensor([prompt_ids], device=model.device)
+        # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
         attention_mask = torch.ones_like(inputs, dtype=torch.bool)
         
-        # attention_mask = torch.ones_like(inputs, dtype=torch.bool)
-
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
         temperature: Optional[float] = input_kwargs.pop("temperature", None)
         top_p: Optional[float] = input_kwargs.pop("top_p", None)
