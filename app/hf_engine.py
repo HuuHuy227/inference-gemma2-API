@@ -167,8 +167,7 @@ class HuggingfaceEngine():
             raise ImportError(f"{error_message}\n\n{''.join(installation_guide)}")
 
         tokenizer = AutoTokenizer.from_pretrained(
-                self.model_path,
-                # use_fast = True
+                self.model_path
             )
         model = AutoModelForCausalLM.from_pretrained(
                 self.model_path,
@@ -217,11 +216,17 @@ class HuggingfaceEngine():
         input_kwargs: Optional[Dict[str, Any]] = {},
     ) -> Tuple[Dict[str, Any], int]:
         
-        prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
+        inputs = tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt=True,
+            return_tensors="pt"
+        ).to(model.device)
+
+        # prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
 
         # inputs = torch.tensor([prompt_ids], device=model.device)
-        inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
-        prompt_length = len(prompt_ids)
+        # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
+        prompt_length = inputs.shape[-1] #len(prompt_ids)
         # attention_mask = torch.ones_like(inputs, dtype=torch.bool)
 
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
