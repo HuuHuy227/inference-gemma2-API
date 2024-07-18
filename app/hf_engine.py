@@ -219,8 +219,12 @@ class HuggingfaceEngine():
         prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
         
         # inputs = torch.tensor([prompt_ids], device=model.device)
-        inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
+        # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
+
         prompt_length = len(prompt_ids)
+        inputs = torch.tensor([prompt_ids], device=model.device)
+        attention_mask = torch.ones_like(inputs, dtype=torch.bool)
+        
         # attention_mask = torch.ones_like(inputs, dtype=torch.bool)
 
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
@@ -272,7 +276,7 @@ class HuggingfaceEngine():
 
         gen_kwargs = dict(
             inputs=inputs,
-            # attention_mask=attention_mask,
+            attention_mask=attention_mask,
             generation_config=GenerationConfig(**generating_args),
         )
 
