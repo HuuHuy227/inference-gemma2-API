@@ -87,6 +87,7 @@ class HuggingfaceEngine():
         if self._check_tensorizer_integrity():
             model, tokenizer = self._load_tensorizer(**kwargs)
         else:
+            print(kwargs)
             model, tokenizer = self._load_model(**kwargs)
 
         if not is_device_map_auto:
@@ -216,17 +217,11 @@ class HuggingfaceEngine():
         input_kwargs: Optional[Dict[str, Any]] = {},
     ) -> Tuple[Dict[str, Any], int]:
         
-        inputs = tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            return_tensors="pt"
-        ).to(model.device)
-
-        # prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
-
+        prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
+        
         # inputs = torch.tensor([prompt_ids], device=model.device)
-        # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
-        prompt_length = inputs.shape[-1] #len(prompt_ids)
+        inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
+        prompt_length = len(prompt_ids)
         # attention_mask = torch.ones_like(inputs, dtype=torch.bool)
 
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
@@ -297,7 +292,7 @@ class HuggingfaceEngine():
         gen_kwargs, prompt_length = HuggingfaceEngine._process_args(
             model, tokenizer, generating_args, messages, input_kwargs
         )
-
+        print(gen_kwargs)
         generate_output = model.generate(**gen_kwargs)
         response_ids = generate_output[:, prompt_length:]
         response = tokenizer.batch_decode(response_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
