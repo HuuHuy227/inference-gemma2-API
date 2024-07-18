@@ -87,7 +87,6 @@ class HuggingfaceEngine():
         if self._check_tensorizer_integrity():
             model, tokenizer = self._load_tensorizer(**kwargs)
         else:
-            print(kwargs)
             model, tokenizer = self._load_model(**kwargs)
 
         if not is_device_map_auto:
@@ -241,14 +240,14 @@ class HuggingfaceEngine():
                 do_sample=do_sample if do_sample is not None else generating_args["do_sample"],
                 temperature=temperature if temperature is not None else generating_args["temperature"],
                 top_p=top_p if top_p is not None else generating_args["top_p"],
-                top_k=top_k if top_k is not None else generating_args["top_k"],
+                # top_k=top_k if top_k is not None else generating_args["top_k"],
                 num_return_sequences=num_return_sequences,
                 # repetition_penalty=repetition_penalty
                 # if repetition_penalty is not None
                 # else generating_args["repetition_penalty"],
                 # length_penalty=length_penalty if length_penalty is not None else generating_args["length_penalty"],
-                eos_token_id=[tokenizer.eos_token_id] + tokenizer.additional_special_tokens_ids,
-                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=[tokenizer.eos_token_id] #+ tokenizer.additional_special_tokens_ids,
+                # pad_token_id=tokenizer.pad_token_id,
             )
         )
 
