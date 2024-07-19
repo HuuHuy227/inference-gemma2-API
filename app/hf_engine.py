@@ -314,7 +314,7 @@ class HuggingfaceEngine():
                 return await loop.run_in_executor(pool, self._chat, *input_args)
 
     @staticmethod
-    @torch.inference_mode()
+    # @torch.inference_mode()
     def _stream_chat(
         model: "PreTrainedModel",
         tokenizer: "PreTrainedTokenizer",
@@ -344,9 +344,6 @@ class HuggingfaceEngine():
         messages: Sequence[Dict[str, str]],
         **input_kwargs,
     ) -> AsyncGenerator[str, None]:
-
-        # messages = messages or []
-        # messages.append({"role": "user", "content": prompt})
 
         loop = asyncio.get_running_loop()
         input_args = (
