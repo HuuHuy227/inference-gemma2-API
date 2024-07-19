@@ -76,6 +76,7 @@ def create_app(chat_model: "ChatModel") -> "FastAPI":
 
 def run_api() -> None:
     model_path = "Huy227/gemma2_vn"
+    # default generate config
     generate_config = {
                 "max_new_tokens": 1024,
                 "top_p":0.95,
@@ -86,7 +87,7 @@ def run_api() -> None:
     chat_model = ChatModel(model_path, generate_config)
     app = create_app(chat_model)
     api_host = os.environ.get("API_HOST", "0.0.0.0")
-    api_port = int(os.environ.get("API_PORT", "8000"))
+    api_port = int(os.environ.get("API_PORT", "8080"))
     print("Visit http://localhost:{}/docs for API document.".format(api_port))
     uvicorn.run(app, host=api_host, port=api_port)
 

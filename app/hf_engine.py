@@ -178,22 +178,6 @@ class HuggingfaceEngine():
         return model, tokenizer
 
     @staticmethod
-    def _get_prompt(chat_history) -> str:
-        # chat_history = chat_history or []
-        # chat_history.extend([
-        #     {"role": "user", "content": prompt},
-        #     {"role": "model", "content": ""}
-        # ])
-        ret = ""
-        for message in chat_history:
-            content = message["content"]
-            role = message["role"] #get_role(message["role"])
-            ret += "<start_of_turn>" + role + "\n"
-            if content:
-                ret += content + "<end_of_turn>\n"
-        return ret
-    
-    @staticmethod
     def _get_full_prompt(chat_history) -> str:
         if chat_history[-1]["role"] == "user":
             chat_history.append({"role": "model", "content": ""})
@@ -216,29 +200,19 @@ class HuggingfaceEngine():
         input_kwargs: Optional[Dict[str, Any]] = {},
     ) -> Tuple[Dict[str, Any], int]:
         
-        prompt_ids = HuggingfaceEngine._get_full_prompt(messages)
-        
-        # inputs = torch.tensor([prompt_ids], device=model.device)
-        # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
-
         inputs = tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
             return_tensors="pt"
         ).to(model.device)
 
-        prompt_length = len(prompt_ids)
-        # inputs = torch.tensor([prompt_ids], device=model.device)
-        # inputs = tokenizer.encode(prompt_ids , return_tensors="pt").to(model.device)
-        attention_mask = torch.ones_like(inputs, dtype=torch.bool)
-        
+        prompt_length = inputs.shape[-1] #len(prompt_ids)
+
         do_sample: Optional[bool] = input_kwargs.pop("do_sample", None)
         temperature: Optional[float] = input_kwargs.pop("temperature", None)
         top_p: Optional[float] = input_kwargs.pop("top_p", None)
         top_k: Optional[float] = input_kwargs.pop("top_k", None)
         num_return_sequences: int = input_kwargs.pop("num_return_sequences", 1)
-        # repetition_penalty: Optional[float] = input_kwargs.pop("repetition_penalty", None)
-        # length_penalty: Optional[float] = input_kwargs.pop("length_penalty", None)
         max_length: Optional[int] = input_kwargs.pop("max_length", None)
         max_new_tokens: Optional[int] = input_kwargs.pop("max_new_tokens", None)
 
@@ -251,12 +225,7 @@ class HuggingfaceEngine():
                 top_p=top_p if top_p is not None else generating_args["top_p"],
                 top_k=top_k if top_k is not None else generating_args["top_k"],
                 num_return_sequences=num_return_sequences,
-                # repetition_penalty=repetition_penalty
-                # if repetition_penalty is not None
-                # else generating_args["repetition_penalty"],
-                # length_penalty=length_penalty if length_penalty is not None else generating_args["length_penalty"],
                 eos_token_id=[tokenizer.eos_token_id] + tokenizer.additional_special_tokens_ids,
-                pad_token_id=tokenizer.pad_token_id,
             )
         )
 
@@ -281,8 +250,12 @@ class HuggingfaceEngine():
 
         gen_kwargs = dict(
             inputs=inputs,
-            attention_mask=attention_mask,
-            generation_config=GenerationConfig(**generating_args),
+            max_new_tokens=generating_args["max_new_tokens"],
+            eos_token_id=generating_args["eos_token_id"],
+            do_sample = generating_args["do_sample"],
+            temperature = generating_args["temperature"],
+            top_p = generating_args["top_p"],
+            top_k = generating_args["top_k"],
         )
 
         return gen_kwargs, prompt_length
@@ -300,7 +273,7 @@ class HuggingfaceEngine():
         gen_kwargs, prompt_length = HuggingfaceEngine._process_args(
             model, tokenizer, generating_args, messages, input_kwargs
         )
-        print(gen_kwargs)
+        # print(gen_kwargs)
         generate_output = model.generate(**gen_kwargs)
         response_ids = generate_output[:, prompt_length:]
         response = tokenizer.batch_decode(response_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
