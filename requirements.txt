@@ -1,4 +1,4 @@
-transformers==4.42.3
+transformers==4.42.4
 accelerate
 scipy
 sentencepiece
